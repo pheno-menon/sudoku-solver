@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { scanSudokuFromImage } from "./scan/scanSudoku"
 
 const SIZE = 9;
 
@@ -44,6 +45,8 @@ export default function App() {
   const [grid, setGrid] = useState(
     Array.from({ length: SIZE }, () => Array(SIZE).fill(""))
   );
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanError, setScanError] = useState(null)
 
   const handleChange = (r, c, val) => {
     if (!/^[1-9]?$/.test(val)) return;
@@ -61,6 +64,61 @@ export default function App() {
   const handleClear = () => {
     setGrid(Array.from({ length: SIZE }, () => Array(SIZE).fill("")));
   };
+
+  async function handleScanClick() {
+    try {
+      setIsScanning(true);
+      setScanError(null);
+
+      const file = await pickImageFromCameraOrGallery();
+      if (!file) return;
+
+      const canvas = await loadImageToCanvas(file);
+      const detectedGrid = await scanSudokuFromImage(canvas);
+
+      fillGridWithDetectedNumbers(detectedGrid);
+
+    } catch (err) {
+      console.error(err);
+      setScanError("Failed to scan Sudoku puzzle.");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  function pickImageFromCameraOrGallery() {
+    return new Promise(resolve => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.capture = "environment"; // mobile camera
+      input.onchange = () => resolve(input.files[0]);
+      input.click();
+    });
+  }
+
+  function loadImageToCanvas(file) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        resolve(canvas);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function fillGridWithDetectedNumbers(detectedGrid) {
+    setGrid(
+      detectedGrid.map(row =>
+        row.map(value => value ?? "")
+      )
+    );
+  }
+
 
   return (
     <div
@@ -119,6 +177,17 @@ export default function App() {
           >
             Clear
           </button>
+          <button
+            onClick={handleScanClick}
+            disabled={isScanning}
+            className="px-4 py-2 bg-indigo-600 text-white rounded"
+          >
+            {isScanning ? "Scanning..." : "Scan"}
+          </button>
+
+          {scanError && (
+            <p className="text-red-500 text-sm mt-2">{scanError}</p>
+          )}
         </div>
       </div>
     </div>
