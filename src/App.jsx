@@ -172,6 +172,9 @@ export default function App() {
             row.map((cell, c) => (
               <input
                 key={`${r}-${c}`}
+                type="text"
+                inputMode="numeric"
+                pattern="[1-9]*"
                 value={cell}
                 onChange={e => handleChange(r, c, e.target.value)}
                 className={[
