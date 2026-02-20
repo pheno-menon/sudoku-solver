@@ -92,7 +92,7 @@ export default function App() {
       input.type = "file";
       input.accept = "image/*";
       input.multiple = false;
-      input.capture = "environment"; // mobile camera
+      
       input.onchange = (event) => {
         const file = event.target.files[0];
         resolve(file || null);
