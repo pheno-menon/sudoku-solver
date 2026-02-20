@@ -91,8 +91,12 @@ export default function App() {
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "image/*";
+      input.multiple = false;
       input.capture = "environment"; // mobile camera
-      input.onchange = () => resolve(input.files[0]);
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        resolve(file || null);
+      };
       input.click();
     });
   }
