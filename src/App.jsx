@@ -5,8 +5,8 @@ const SIZE = 9;
 
 function isValid(board, row, col, num) {
   for (let i = 0; i < SIZE; i++) {
-    if (board[row][i] === num) return false;
-    if (board[i][col] === num) return false;
+    if (i !== col && board[row][i] === num) return false;
+    if (i !== row && board[i][col] === num) return false;
   }
 
   const boxRow = Math.floor(row / 3) * 3;
@@ -14,7 +14,7 @@ function isValid(board, row, col, num) {
 
   for (let r = boxRow; r < boxRow + 3; r++) {
     for (let c = boxCol; c < boxCol + 3; c++) {
-      if (board[r][c] === num) return false;
+      if ((r !== row || c !== col) && board[r][c] === num) return false;
     }
   }
 
@@ -22,6 +22,8 @@ function isValid(board, row, col, num) {
 }
 
 function solveSudoku(board) {
+  console.log(board[0][2])
+  console.log(typeof board[0][2])
   for (let row = 0; row < SIZE; row++) {
     for (let col = 0; col < SIZE; col++) {
       if (board[row][col] === "") {
@@ -57,6 +59,12 @@ export default function App() {
 
   const handleSolve = () => {
     const copy = grid.map(r => [...r]);
+
+    if (!isInitialGridValid(copy)) {
+      alert("Invalid puzzle configuration");
+      return;
+    }
+
     if (solveSudoku(copy)) setGrid(copy);
     else alert("No solution");
   };
@@ -118,11 +126,24 @@ export default function App() {
   function fillGridWithDetectedNumbers(detectedGrid) {
     setGrid(
       detectedGrid.map(row =>
-        row.map(value => value ?? "")
+        row.map(value => value != null ? String(value) : "")
       )
     );
   }
 
+  function isInitialGridValid(board) {
+    for (let row = 0; row < SIZE; row++) {
+      for (let col = 0; col < SIZE; col++) {
+        const value = board[row][col];
+        if (value !== "") {
+          if (!isValid(board, row, col, value)) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
 
   return (
     <div
