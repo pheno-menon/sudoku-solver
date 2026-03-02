@@ -22,8 +22,6 @@ function isValid(board, row, col, num) {
 }
 
 function solveSudoku(board) {
-  console.log(board[0][2])
-  console.log(typeof board[0][2])
   for (let row = 0; row < SIZE; row++) {
     for (let col = 0; col < SIZE; col++) {
       if (board[row][col] === "") {
@@ -42,6 +40,24 @@ function solveSudoku(board) {
   return true;
 }
 
+function computeCandidates(board) {
+  return board.map((row, r) =>
+    row.map((cell, c) => {
+      if (cell !== "") return null;
+      const possible = [];
+      for (let num = 1; num <= 9; num++) {
+        if (isValid(board, r, c, String(num))) {
+          possible.push(num);
+        }
+      }
+      return possible;
+    })
+  );
+}
+
+const emptyCandidates = () =>
+  Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+
 export default function App() {
   const [dark, setDark] = useState(false);
   const [grid, setGrid] = useState(
@@ -49,12 +65,15 @@ export default function App() {
   );
   const [isScanning, setIsScanning] = useState(false)
   const [scanError, setScanError] = useState(null)
+  const [candidates, setCandidates] = useState(emptyCandidates());
+  const [hintMode, setHintMode] = useState("pencil"); // "pencil" | "list"
 
   const handleChange = (r, c, val) => {
     if (!/^[1-9]?$/.test(val)) return;
     const next = grid.map(row => [...row]);
     next[r][c] = val;
     setGrid(next);
+    setCandidates(emptyCandidates());
   };
 
   const handleSolve = () => {
@@ -65,12 +84,24 @@ export default function App() {
       return;
     }
 
-    if (solveSudoku(copy)) setGrid(copy);
+    if (solveSudoku(copy)) {
+      setGrid(copy);
+      setCandidates(emptyCandidates());
+    }
     else alert("No solution");
   };
 
   const handleClear = () => {
     setGrid(Array.from({ length: SIZE }, () => Array(SIZE).fill("")));
+    setCandidates(emptyCandidates());
+  };
+
+  const handleHint = () => {
+    if (!isInitialGridValid(grid)) {
+      alert("Invalid puzzle configuration");
+      return;
+    }
+    setCandidates(computeCandidates(grid));
   };
 
   async function handleScanClick() {
@@ -110,7 +141,7 @@ export default function App() {
   }
 
   function loadImageToCanvas(file) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -119,6 +150,7 @@ export default function App() {
         canvas.getContext("2d").drawImage(img, 0, 0);
         resolve(canvas);
       };
+      img.onerror = () => reject(new Error("Failed to load image"));
       img.src = URL.createObjectURL(file);
     });
   }
@@ -129,6 +161,7 @@ export default function App() {
         row.map(value => value != null ? String(value) : "")
       )
     );
+    setCandidates(emptyCandidates());
   }
 
   function isInitialGridValid(board) {
@@ -169,30 +202,65 @@ export default function App() {
           ].join(" ")}
         >
           {grid.map((row, r) =>
-            row.map((cell, c) => (
-              <input
-                key={`${r}-${c}`}
-                type="text"
-                inputMode="numeric"
-                pattern="[1-9]*"
-                value={cell}
-                onChange={e => handleChange(r, c, e.target.value)}
-                className={[
-                  "w-10 h-10 text-center text-lg font-semibold outline-none",
-                  dark ? "bg-gray-800 text-gray-100" : "bg-white",
-                  (c + 1) % 3 === 0 && c !== 8
-                    ? "border-r border-gray-500"
-                    : "",
-                  (r + 1) % 3 === 0 && r !== 8
-                    ? "border-b border-gray-500"
-                    : "",
-                ].join(" ")}
-              />
-            ))
+            row.map((cell, c) => {
+              const cellCandidates = candidates[r][c];
+              const showCandidates = cell === "" && Array.isArray(cellCandidates);
+
+              return (
+                <div
+                  key={`${r}-${c}`}
+                  className={[
+                    "w-10 h-10 flex items-center justify-center",
+                    dark ? "bg-gray-800" : "bg-white",
+                    (c + 1) % 3 === 0 && c !== 8 ? "border-r-2 border-gray-500" : "",
+                    (r + 1) % 3 === 0 && r !== 8 ? "border-b-2 border-gray-500" : "",
+                  ].join(" ")}
+                >
+                  {showCandidates ? (
+                    hintMode === "pencil" ? (
+                      <div className="grid grid-cols-3 w-full h-full p-px">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                          <span
+                            key={n}
+                            className={[
+                              "flex items-center justify-center text-[7px] leading-none",
+                              cellCandidates.includes(n)
+                                ? (dark ? "text-blue-300" : "text-blue-600")
+                                : "text-transparent",
+                            ].join(" ")}
+                          >
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className={[
+                        "text-[7px] leading-tight text-center px-px break-all",
+                        dark ? "text-blue-300" : "text-blue-600",
+                      ].join(" ")}>
+                        {cellCandidates.join(",")}
+                      </span>
+                    )
+                  ) : (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[1-9]*"
+                      value={cell}
+                      onChange={e => handleChange(r, c, e.target.value)}
+                      className={[
+                        "w-full h-full text-center text-lg font-semibold outline-none bg-transparent",
+                        dark ? "text-gray-100" : "text-gray-900",
+                      ].join(" ")}
+                    />
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
 
-        <div className="mt-4 flex gap-4">
+        <div className="mt-4 flex gap-4 flex-wrap justify-center">
           <button
             onClick={handleSolve}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -212,11 +280,45 @@ export default function App() {
           >
             {isScanning ? "Scanning..." : "Scan"}
           </button>
-
-          {scanError && (
-            <p className="text-red-500 text-sm mt-2">{scanError}</p>
-          )}
         </div>
+        <div className="mt-4 flex gap-4 flex-wrap justify-center">
+          <button
+            onClick={handleHint}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            Hints
+          </button>
+          <div className="flex rounded border overflow-hidden text-sm">
+            <button
+              onClick={() => setHintMode("pencil")}
+              title="Pencil marks"
+              className={[
+                "px-3 py-2",
+                hintMode === "pencil"
+                  ? "bg-green-600 text-white"
+                  : dark ? "bg-gray-700 text-gray-300" : "bg-white text-gray-700",
+              ].join(" ")}
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => setHintMode("list")}
+              title="List"
+              className={[
+                "px-3 py-2",
+                hintMode === "list"
+                  ? "bg-green-600 text-white"
+                  : dark ? "bg-gray-700 text-gray-300" : "bg-white text-gray-700",
+              ].join(" ")}
+            >
+              🔢
+            </button>
+          </div>
+        </div>
+
+        {scanError && (
+          <p className="text-red-500 text-sm mt-2">{scanError}</p>
+        )}
       </div>
     </div>
   );
