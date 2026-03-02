@@ -286,7 +286,7 @@ export default function App() {
             onClick={handleHint}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Hints
+            Pencil Notes
           </button>
           <div className="flex rounded border overflow-hidden text-sm">
             <button
